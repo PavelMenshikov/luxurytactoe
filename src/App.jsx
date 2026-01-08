@@ -12,24 +12,17 @@ function App() {
   const [isBotThinking, setIsBotThinking] = useState(false)
   const [copied, setCopied] = useState(false)
   const [difficulty, setDifficulty] = useState('easy')
-
-  const [tg, setTg] = useState(null)
+  const [isLoadingPromo, setIsLoadingPromo] = useState(false)
 
   useEffect(() => {
-    const webapp = window.Telegram?.WebApp;
-    if (webapp) {
-        webapp.ready();
-        webapp.expand();
-        webapp.setHeaderColor('#ffffff');
-        setTg(webapp);
+    if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+        window.Telegram.WebApp.setHeaderColor('#ffffff');
     }
   }, []);
 
-  const winningLines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8],
-    [0, 3, 6], [1, 4, 7], [2, 5, 8],
-    [0, 4, 8], [2, 4, 6]
-  ];
+  const winningLines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
   const checkWinner = (squares) => {
     for (let line of winningLines) {
@@ -39,40 +32,11 @@ function App() {
     return null;
   };
 
-  
-  // 1. Уровень EASY: Рандом
-  const getRandomMove = (squares) => {
-    const moves = squares.map((v, i) => v === null ? i : null).filter(v => v !== null);
-    return moves[Math.floor(Math.random() * moves.length)];
-  };
-
-  // 2. Уровень HARD: Атака/Защита
-  const getSmartMove = (squares) => {
-    // Проверка: может ли бот выиграть сейчас?
-    for (let line of winningLines) {
-      const [a, b, c] = line;
-      const vals = [squares[a], squares[b], squares[c]];
-      if (vals.filter(v => v === 'O').length === 2 && vals.filter(v => v === null).length === 1) {
-        return line[vals.indexOf(null)];
-      }
-    }
-    for (let line of winningLines) {
-      const [a, b, c] = line;
-      const vals = [squares[a], squares[b], squares[c]];
-      if (vals.filter(v => v === 'X').length === 2 && vals.filter(v => v === null).length === 1) {
-        return line[vals.indexOf(null)];
-      }
-    }
-    return getRandomMove(squares);
-  };
-
-  // 3. Уровень IMPOSSIBLE: Minimax
   const minimax = (tempBoard, depth, isMaximizing) => {
     const result = checkWinner(tempBoard);
     if (result === 'O') return 10 - depth;
     if (result === 'X') return depth - 10;
     if (!tempBoard.includes(null)) return 0;
-
     if (isMaximizing) {
       let bestScore = -Infinity;
       for (let i = 0; i < 9; i++) {
@@ -98,28 +62,39 @@ function App() {
     }
   };
 
-  const getBestMove = (squares) => {
-    let bestScore = -Infinity;
+  const botMove = (currentBoard) => {
     let move;
-    for (let i = 0; i < 9; i++) {
-      if (squares[i] === null) {
-        squares[i] = 'O';
-        let score = minimax(squares, 0, false);
-        squares[i] = null;
-        if (score > bestScore) {
-          bestScore = score;
-          move = i;
+    if (difficulty === 'easy') {
+      const moves = currentBoard.map((v, i) => v === null ? i : null).filter(v => v !== null);
+      move = moves[Math.floor(Math.random() * moves.length)];
+    } else if (difficulty === 'hard') {
+      for (let line of winningLines) {
+        const [a, b, c] = line;
+        const vals = [currentBoard[a], currentBoard[b], currentBoard[c]];
+        if (vals.filter(v => v === 'O').length === 2 && vals.filter(v => v === null).length === 1) move = line[vals.indexOf(null)];
+      }
+      if (move === undefined) {
+        for (let line of winningLines) {
+          const [a, b, c] = line;
+          const vals = [currentBoard[a], currentBoard[b], currentBoard[c]];
+          if (vals.filter(v => v === 'X').length === 2 && vals.filter(v => v === null).length === 1) move = line[vals.indexOf(null)];
+        }
+      }
+      if (move === undefined) {
+        const moves = currentBoard.map((v, i) => v === null ? i : null).filter(v => v !== null);
+        move = moves[Math.floor(Math.random() * moves.length)];
+      }
+    } else {
+      let bestScore = -Infinity;
+      for (let i = 0; i < 9; i++) {
+        if (currentBoard[i] === null) {
+          currentBoard[i] = 'O';
+          let score = minimax(currentBoard, 0, false);
+          currentBoard[i] = null;
+          if (score > bestScore) { bestScore = score; move = i; }
         }
       }
     }
-    return move;
-  };
-
-  const botMove = (currentBoard) => {
-    let move;
-    if (difficulty === 'easy') move = getRandomMove(currentBoard);
-    else if (difficulty === 'hard') move = getSmartMove(currentBoard);
-    else move = getBestMove(currentBoard);
 
     if (move !== undefined) {
       currentBoard[move] = 'O';
@@ -135,7 +110,7 @@ function App() {
     const nextBoard = [...board];
     nextBoard[i] = 'X';
     setBoard(nextBoard);
-    if (tg) tg.HapticFeedback.impactOccurred('light');
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
     const gameWinner = checkWinner(nextBoard);
     if (gameWinner) finishGame(gameWinner);
     else if (!nextBoard.includes(null)) setWinner('Draw');
@@ -145,39 +120,33 @@ function App() {
     }
   };
 
-  const copyToClipboard = () => {
-    if (promo) {
-      navigator.clipboard.writeText(promo);
-      setCopied(true);
-      if (tg) tg.HapticFeedback.notificationOccurred('success');
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const finishGame = async (result) => {
     setWinner(result);
-    const status = result === 'X' ? 'win' : 'loss';
-    if (status === 'win') {
+    if (result === 'X') {
       confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-      if (tg) tg.HapticFeedback.notificationOccurred('success');
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
+      setIsLoadingPromo(true);
+      
+      const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      const payload = { 
+          result: 'win',
+          name: user ? `${user.first_name} ${user.last_name || ''}`.trim() : "Браузер (Тест)",
+          username: user?.username ? `@${user.username}` : "нет юзернейма",
+          user_id: user?.id || "Dev-Local",
+          diff: difficulty
+      };
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload) 
+        });
+        const data = await response.json();
+        if (data.promo) setPromo(data.promo);
+      } catch (error) { console.error(error); }
+      setIsLoadingPromo(false);
     }
-    const user = tg?.initDataUnsafe?.user;
-    const payload = { 
-        result: status,
-        name: user ? `${user.first_name} ${user.last_name || ''}`.trim() : "Аноним из браузера",
-        username: user?.username ? `@${user.username}` : "нет юзернейма",
-        user_id: user?.id || "Dev-Local",
-        diff: difficulty 
-    };
-    try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload) 
-      });
-      const data = await response.json();
-      if (data.promo) setPromo(data.promo);
-    } catch (error) { console.error(error); }
   };
 
   return (
@@ -190,21 +159,10 @@ function App() {
         <p className="text-violet-900 font-bold tracking-[0.2em] text-[9px] uppercase bg-white/40 inline-block px-3 py-1 rounded-full border border-white">ТЯЖЁЛЫЙ ЛЮКС 💄</p>
       </motion.div>
 
-      {/* ПЕРЕКЛЮЧАТЕЛЬ СЛОЖНОСТИ */}
       <div className="z-10 mb-8 flex bg-white/40 backdrop-blur-md p-1 rounded-2xl border border-white shadow-inner">
         {['easy', 'hard', 'impossible'].map((level) => (
-          <button
-            key={level}
-            onClick={() => {
-              if (board.every(c => c === null)) setDifficulty(level);
-              else if (tg) tg.HapticFeedback.notificationOccurred('warning');
-            }}
-            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-              difficulty === level 
-              ? 'bg-slate-900 text-white shadow-lg' 
-              : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
+          <button key={level} onClick={() => board.every(c => c === null) && setDifficulty(level)}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${difficulty === level ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400'}`}>
             {level === 'easy' ? 'Easy' : level === 'hard' ? 'Hard' : 'God Mode'}
           </button>
         ))}
@@ -214,12 +172,8 @@ function App() {
         {board.map((cell, i) => (
           <motion.div key={i} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} onClick={() => handleBlockClick(i)} className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center cursor-pointer border-2 border-indigo-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-colors hover:border-purple-300">
             <AnimatePresence>
-              {cell === 'X' && (
-                <motion.span initial={{ rotate: -45, scale: 0 }} animate={{ rotate: 0, scale: 1 }} className="text-4xl font-black bg-gradient-to-br from-purple-600 to-pink-500 bg-clip-text text-transparent filter drop-shadow">X</motion.span>
-              )}
-              {cell === 'O' && (
-                <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-4xl font-black text-slate-300">O</motion.span>
-              )}
+              {cell === 'X' && <motion.span initial={{ rotate: -45, scale: 0 }} animate={{ rotate: 0, scale: 1 }} className="text-4xl font-black bg-gradient-to-br from-purple-600 to-pink-500 bg-clip-text text-transparent filter drop-shadow">X</motion.span>}
+              {cell === 'O' && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-4xl font-black text-slate-300">O</motion.span>}
             </AnimatePresence>
           </motion.div>
         ))}
@@ -228,14 +182,15 @@ function App() {
       <AnimatePresence>
         {winner && (
           <div className="fixed inset-0 bg-violet-900/20 backdrop-blur-md flex items-center justify-center z-50 p-4">
-             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white/90 p-8 rounded-[35px] text-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] max-w-xs w-full border border-white relative overflow-hidden">
-                <h2 className="text-3xl font-black text-slate-800 mb-2">
-                  {winner === 'X' ? 'Победа! ✨' : winner === 'Draw' ? 'Ничья! 🤝' : 'Поражение...'}
-                </h2>
+             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white/90 p-8 rounded-[35px] text-center shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] max-w-xs w-full border border-white relative">
+                <h2 className="text-3xl font-black text-slate-800 mb-2">{winner === 'X' ? 'Ты Великолепна! ✨' : winner === 'Draw' ? 'Ничья! 🤝' : 'Поражение...'}</h2>
                 <p className="text-gray-500 text-[11px] mb-6 uppercase tracking-widest font-bold">Уровень: {difficulty}</p>
                 
+                {isLoadingPromo && <p className="text-violet-500 animate-pulse text-xs">Генерация приза...</p>}
+
                 {promo && winner === 'X' && (
-                   <motion.div whileTap={{ scale: 0.98 }} onClick={copyToClipboard} className="my-6 p-4 bg-fuchsia-50 border border-fuchsia-200 rounded-2xl cursor-pointer hover:bg-fuchsia-100 transition-all">
+                   <motion.div whileTap={{ scale: 0.98 }} onClick={() => { navigator.clipboard.writeText(promo); setCopied(true); setTimeout(()=>setCopied(false), 2000); }} 
+                     className="my-6 p-4 bg-fuchsia-50 border border-fuchsia-200 rounded-2xl cursor-pointer">
                       <div className="text-[10px] font-bold text-fuchsia-400 mb-1 uppercase tracking-widest">{copied ? '✅ СКОПИРОВАНО!' : 'Нажми, чтобы скопировать'}</div>
                       <div className="text-3xl font-black text-fuchsia-600 tracking-widest font-mono">{promo}</div>
                    </motion.div>
