@@ -69,9 +69,7 @@ function App() {
       try { window.Telegram.WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
     }
 
-    
     const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    
     
     const payload = { 
         result: status,
@@ -91,11 +89,12 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-gradient-to-br from-purple-100 via-indigo-100 to-pink-50 overflow-hidden relative">
+    /* fixed inset-0 убирает белые рамки, растягивая фон на всё окно */
+    <div className="fixed inset-0 flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-100 via-indigo-100 to-pink-50 overflow-hidden">
       
-      {/* ФОНОВЫЙ ЛЮКС (Пятна) */}
-      <div className="absolute top-[-50px] left-[-50px] w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-[80px] opacity-60"></div>
-      <div className="absolute bottom-[-50px] right-[-50px] w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-[80px] opacity-60"></div>
+      {/* ФОНОВЫЙ ЛЮКС (Увеличенные пятна для бесшовности) */}
+      <div className="absolute top-[-10%] left-[-20%] w-[100%] h-[60%] bg-purple-200 rounded-full mix-blend-multiply filter blur-[100px] opacity-60"></div>
+      <div className="absolute bottom-[-10%] right-[-20%] w-[100%] h-[60%] bg-pink-200 rounded-full mix-blend-multiply filter blur-[100px] opacity-60"></div>
 
       <motion.div 
         initial={{ y: -20, opacity: 0 }} 
@@ -112,7 +111,7 @@ function App() {
         </div>
       </motion.div>
 
-      {/* ПОЛЕ С ЖИРНЫМИ БОРДЕРАМИ */}
+      {/* ПОЛЕ С КОНТРАСТНЫМИ ГРАНИЦАМИ */}
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -124,10 +123,6 @@ function App() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => handleBlockClick(i)}
-            // ВОТ ТУТ ГЛАВНЫЕ ИЗМЕНЕНИЯ КОНТРАСТА:
-            // bg-white (чистый белый)
-            // border-2 (толстая рамка 2px)
-            // border-indigo-100 (цвет рамки)
             className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center cursor-pointer border-2 border-indigo-100 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] transition-colors hover:border-purple-300"
           >
             <AnimatePresence>
@@ -135,7 +130,6 @@ function App() {
                 <motion.span 
                   initial={{ rotate: -45, scale: 0 }}
                   animate={{ rotate: 0, scale: 1 }}
-                  // Яркий градиент для крестика
                   className="text-4xl font-black bg-gradient-to-br from-purple-600 to-pink-500 bg-clip-text text-transparent filter drop-shadow"
                 >
                   X
