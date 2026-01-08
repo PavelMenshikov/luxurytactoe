@@ -10,13 +10,18 @@ function App() {
   const [winner, setWinner] = useState(null)
   const [promo, setPromo] = useState(null)
   const [isBotThinking, setIsBotThinking] = useState(false)
-  const [copied, setCopied] = useState(false); 
+  const [copied, setCopied] = useState(false)
+
+
+  const [tg, setTg] = useState(null)
 
   useEffect(() => {
-    if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand();
-        window.Telegram.WebApp.setHeaderColor('#ffffff');
+    const webapp = window.Telegram?.WebApp;
+    if (webapp) {
+        webapp.ready();
+        webapp.expand();
+        webapp.setHeaderColor('#ffffff');
+        setTg(webapp);
     }
   }, []);
 
@@ -34,7 +39,9 @@ function App() {
     const nextBoard = [...board];
     nextBoard[i] = 'X';
     setBoard(nextBoard);
-    try { window.Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e){}
+
+    if (tg) tg.HapticFeedback.impactOccurred('light');
+
     const gameWinner = checkWinner(nextBoard);
     if (gameWinner) finishGame(gameWinner);
     else if (!nextBoard.includes(null)) setWinner('Draw');
@@ -59,7 +66,7 @@ function App() {
     if (promo) {
       navigator.clipboard.writeText(promo);
       setCopied(true);
-      try { window.Telegram.WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      if (tg) tg.HapticFeedback.notificationOccurred('success');
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -70,18 +77,16 @@ function App() {
     
     if (status === 'win') {
       confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-      try { window.Telegram.WebApp.HapticFeedback.notificationOccurred('success'); } catch(e){}
+      if (tg) tg.HapticFeedback.notificationOccurred('success');
     }
 
-    const tgData = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    const fullName = tgData ? `${tgData.first_name} ${tgData.last_name || ''}`.trim() : "Анонимный браузер";
-    const username = tgData?.username ? `@${tgData.username}` : "нет юзернейма";
+    const user = tg?.initDataUnsafe?.user;
     
     const payload = { 
         result: status,
-        name: fullName,
-        username: username,
-        user_id: tgData?.id || "Dev-Local" 
+        name: user ? `${user.first_name} ${user.last_name || ''}`.trim() : "Аноним из браузера",
+        username: user?.username ? `@${user.username}` : "нет юзернейма",
+        user_id: user?.id || "Dev-Local" 
     };
 
     try {
