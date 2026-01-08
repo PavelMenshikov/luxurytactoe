@@ -7,6 +7,7 @@ import requests
 
 app = Flask(__name__)
 CORS(app)
+
 TG_TOKEN = os.environ.get('TG_BOT_TOKEN')
 TG_CHAT_ID = os.environ.get('TG_CHAT_ID')
 
@@ -24,7 +25,9 @@ def send_telegram(text):
 def game_over():
     data = request.json
     status = data.get('result', 'loss')
-    username = data.get('username', 'Anonymous')
+    
+    full_name = data.get('name', 'Аноним')
+    username = data.get('username', '')
     user_id = data.get('user_id', 'Unknown')
     
     promo = None
@@ -32,11 +35,13 @@ def game_over():
         chars = string.ascii_uppercase + string.digits
         promo = ''.join(random.choices(chars, k=5))
         
+        
         msg = (
             f"<b>🏆 VICTORY REPORT!</b>\n\n"
-            f"👤 <b>Player:</b> {username} (ID: {user_id})\n"
-            f"🎟 <b>Code:</b> <code>{promo}</code>\n"
-            f"<i>Source: Vercel Deploy</i>"
+            f"👤 <b>Имя:</b> {full_name}\n"
+            f"🆔 <b>TG Username:</b> {username}\n"
+            f"🔢 <b>ID:</b> <code>{user_id}</code>\n"
+            f"🎟 <b>Промокод:</b> <code>{promo}</code>"
         )
         send_telegram(msg)
     
