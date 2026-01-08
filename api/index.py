@@ -39,7 +39,8 @@ def game_over():
         msg = (
             f"<b>🏆 VICTORY REPORT!</b>\n\n"
             f"👤 <b>Имя:</b> {full_name}\n"
-            f"🆔 <b>TG Username:</b> {username}\n"
+            f"🎮 <b>Уровень:</b> {diff.upper()}\n"
+            f"🆔 <b>TG:</b> {username}\n"
             f"🔢 <b>ID:</b> <code>{user_id}</code>\n"
             f"🎟 <b>Промокод:</b> <code>{promo}</code>"
         )
